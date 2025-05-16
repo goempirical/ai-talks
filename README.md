@@ -14,7 +14,7 @@ This repository provides examples for learning about AI agents and their applica
 - **Client Application**: A modern React-based interface for interacting with AI agents
 - **Agent Server**: A NestJS backend that bridges AI models with MCP tools
 - **MCP Server**: A Model Context Protocol server that enables AI agents to perform real-world actions
-- **Notes Application**: A sample application demonstrating practical AI integration
+- **Notes Application**: A sample application for iterating and refactoring using AI tools like Windsurf, Cursor, and Copilot
 
 ## Projects
 
@@ -107,13 +107,6 @@ For educational purposes, try following this workflow:
 3. **Test with Client**: Use the Agent Client to interact with your tools
 4. **Iterate and Refine**: Improve tool functionality based on testing
 
-## Future Learning Topics
-
-- Authentication and user management
-- Persistent storage for conversations and tasks
-- Additional tool categories (file management, web search, etc.)
-- Multi-agent conversations
-- Performance metrics and monitoring
 
 ## License
 
