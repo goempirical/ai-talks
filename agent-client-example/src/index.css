@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+@layer components {
+  .chat-container {
+    @apply w-full max-w-4xl mx-auto p-4;
+  }
+  
+  .message-container {
+    @apply mb-4 p-4 rounded-lg;
+  }
+  
+  .user-message {
+    @apply bg-blue-100 ml-auto;
+  }
+  
+  .assistant-message {
+    @apply bg-gray-100 mr-auto;
+  }
+  
+  .input-container {
+    @apply w-full flex gap-2 mt-4;
+  }
+  
+  .chat-input {
+    @apply flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+  
+  .send-button {
+    @apply bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors;
+  }
+}

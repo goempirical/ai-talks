@@ -1,0 +1,26 @@
+{
+  "name": "mcp-task-server",
+  "version": "1.0.0",
+  "description": "MCP server for task management",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc -w",
+    "http": "node dist/http.js"
+  },
+  "dependencies": {
+    "zod": "^3.22.4",
+    "@modelcontextprotocol/sdk": "1.10.2",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.3.3"
+  }
+}
