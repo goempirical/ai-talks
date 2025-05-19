@@ -4,7 +4,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-18.0%2B-green)
 
-A powerful and extensible Model Context Protocol (MCP) server that enables AI agents to interact with external tools and services. This implementation provides a task management system that demonstrates how to build and deploy MCP-compatible tools for AI assistants.
+A powerful and extensible Model Context Protocol (MCP) server that enables AI agents to interact with external tools and services. This implementation provides a task management system that demonstrates how to build and deploy MCP-compatible tools for AI assistants. The server supports both stdio transport for direct MCP communication and HTTP transport for web-based integrations.
 
 ## 🌟 What is MCP?
 
@@ -14,7 +14,9 @@ The Model Context Protocol (MCP) is a standard that allows AI models to interact
 
 - **MCP-Compatible Tools**: Ready-to-use tools for AI assistants
 - **Task Management System**: Create, list, and complete tasks
-- **Dual Interface**: Works with both MCP stdio mode and HTTP API
+- **Multiple Transport Options**: Works with both stdio and HTTP transport
+- **Native MCP Protocol Support**: Implements the official MCP specification
+- **RESTful API**: HTTP endpoints for traditional web applications
 - **Extensible Architecture**: Easily add new tools and capabilities
 - **Developer-Friendly**: Clear documentation and examples
 - **Lightweight**: In-memory storage for quick setup and testing
@@ -79,7 +81,7 @@ npm run build
 
 ## 🏃‍♂️ Running the Server
 
-### MCP Mode (for AI Assistants)
+### Stdio Transport (for AI Assistants)
 
 ```bash
 npm start
@@ -87,23 +89,41 @@ npm start
 
 This runs the server in stdio mode, making it compatible with MCP clients like Claude for Desktop.
 
-### HTTP Mode (for Web Applications)
+### HTTP Transport (Native MCP Protocol)
+
+```bash
+npm run start:http
+```
+
+This runs the server with HTTP transport using the native MCP protocol. The server listens on port 3001 by default and exposes the MCP endpoint at `/mcp`.
+
+### Legacy HTTP API (for Web Applications)
 
 ```bash
 npm run http
 ```
 
-The HTTP server runs on port 3000 by default. You can access it at `http://localhost:3000`.
+This runs the traditional HTTP API server. The HTTP server runs on port 3001 by default.
 
-Customize the port using the `PORT` environment variable:
+Customize the port using the `PORT` environment variable for any mode:
 
 ```bash
-PORT=8080 npm run http
+PORT=8080 npm run start:http
 ```
 
-## 🌐 HTTP API Endpoints
+## 🌐 Available Endpoints
 
-### Create a Task
+### Native MCP Protocol Endpoint
+
+```
+POST /mcp
+```
+
+This endpoint implements the Model Context Protocol specification for HTTP transport. It accepts and responds with MCP-formatted JSON-RPC messages.
+
+### RESTful API Endpoints
+
+#### Create a Task
 
 ```
 POST /api/tasks
@@ -117,25 +137,25 @@ Request body:
 }
 ```
 
-### List All Tasks
+#### List All Tasks
 
 ```
 GET /api/tasks?status=[all|pending|completed]
 ```
 
-### List Pending Tasks
+#### List Pending Tasks
 
 ```
 GET /api/tasks/pending
 ```
 
-### Complete a Task
+#### Complete a Task
 
 ```
 PATCH /api/tasks/:id/complete
 ```
 
-### Execute MCP Tool Directly
+#### Execute MCP Tool Directly
 
 ```
 POST /api/mcp/execute
@@ -172,9 +192,31 @@ Check the existing tools for examples of how to structure your implementations.
    - List all tasks: `list-tasks`
    - Complete a task: `complete-task` with the task ID
 
-## 🔄 Integration with Web Clients
+## 🔄 Integration with Other Projects
 
-This server pairs perfectly with the `agent-client-example` project, which provides a web interface for interacting with AI assistants and MCP tools.
+### Agent Server Example
+
+To connect the `agent-server-example` project to this MCP server:
+
+1. Set the `MCP_SERVER_URL` environment variable in the agent-server-example's `.env` file:
+   ```
+   MCP_SERVER_URL=http://localhost:3001
+   ```
+
+2. Start the MCP server with HTTP transport:
+   ```bash
+   npm run start:http
+   ```
+
+3. Start the agent-server-example:
+   ```bash
+   cd ../agent-server-example
+   npm start
+   ```
+
+### Agent Client Example
+
+The `agent-client-example` project provides a web interface for interacting with AI assistants and MCP tools. It connects to the agent-server-example, which in turn connects to this MCP server.
 
 ## 📋 Future Enhancements
 
@@ -183,6 +225,8 @@ This server pairs perfectly with the `agent-client-example` project, which provi
 - Additional tool categories (file management, web search, etc.)
 - WebSocket support for real-time updates
 - Tool execution metrics and logging
+- Session management for stateful MCP interactions
+- Streaming responses for large data transfers
 
 ## 📄 License
 
