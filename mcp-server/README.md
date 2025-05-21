@@ -3,8 +3,9 @@
 ![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-18.0%2B-green)
+![MCP SDK](https://img.shields.io/badge/MCP%20SDK-Compatible-orange)
 
-A powerful and extensible Model Context Protocol (MCP) server that enables AI agents to interact with external tools and services. This implementation provides a task management system that demonstrates how to build and deploy MCP-compatible tools for AI assistants. The server supports both stdio transport for direct MCP communication and HTTP transport for web-based integrations.
+A powerful and extensible Model Context Protocol (MCP) server that enables AI agents to interact with external tools and services. This implementation provides a task management system that demonstrates how to build and deploy MCP-compatible tools for AI assistants. The server supports both stdio transport for direct MCP communication and HTTP transport for web-based integrations, with robust session management for reliable client connections.
 
 ## 🌟 What is MCP?
 
@@ -16,6 +17,8 @@ The Model Context Protocol (MCP) is a standard that allows AI models to interact
 - **Task Management System**: Create, list, and complete tasks
 - **Multiple Transport Options**: Works with both stdio and HTTP transport
 - **Native MCP Protocol Support**: Implements the official MCP specification
+- **Robust Session Management**: Maintains valid session IDs for reliable tool execution
+- **MCP SDK Integration**: Compatible with the official MCP SDK client
 - **RESTful API**: HTTP endpoints for traditional web applications
 - **Extensible Architecture**: Easily add new tools and capabilities
 - **Developer-Friendly**: Clear documentation and examples
@@ -97,13 +100,6 @@ npm run start:http
 
 This runs the server with HTTP transport using the native MCP protocol. The server listens on port 3001 by default and exposes the MCP endpoint at `/mcp`.
 
-### Legacy HTTP API (for Web Applications)
-
-```bash
-npm run http
-```
-
-This runs the traditional HTTP API server. The HTTP server runs on port 3001 by default.
 
 Customize the port using the `PORT` environment variable for any mode:
 
@@ -120,57 +116,6 @@ POST /mcp
 ```
 
 This endpoint implements the Model Context Protocol specification for HTTP transport. It accepts and responds with MCP-formatted JSON-RPC messages.
-
-### RESTful API Endpoints
-
-#### Create a Task
-
-```
-POST /api/tasks
-```
-
-Request body:
-```json
-{
-  "title": "Task title",
-  "description": "Task description"
-}
-```
-
-#### List All Tasks
-
-```
-GET /api/tasks?status=[all|pending|completed]
-```
-
-#### List Pending Tasks
-
-```
-GET /api/tasks/pending
-```
-
-#### Complete a Task
-
-```
-PATCH /api/tasks/:id/complete
-```
-
-#### Execute MCP Tool Directly
-
-```
-POST /api/mcp/execute
-```
-
-Request body:
-```json
-{
-  "tool": "tool-name",
-  "params": {
-    "param1": "value1",
-    "param2": "value2"
-  }
-}
-```
 
 ## 🔮 Building Your Own MCP Tools
 
@@ -192,31 +137,65 @@ Check the existing tools for examples of how to structure your implementations.
    - List all tasks: `list-tasks`
    - Complete a task: `complete-task` with the task ID
 
-## 🔄 Integration with Other Projects
+## 🔄 Integration with MCP Clients
 
-### Agent Server Example
+This server implements the Model Context Protocol specification and can be used with any MCP-compatible client. It supports both custom clients and the official MCP SDK.
 
-To connect the `agent-server-example` project to this MCP server:
+### Using with the MCP SDK
 
-1. Set the `MCP_SERVER_URL` environment variable in the agent-server-example's `.env` file:
+1. Install the MCP SDK in your client application:
+   ```bash
+   npm install @modelcontextprotocol/sdk
    ```
-   MCP_SERVER_URL=http://localhost:3001
+
+2. Use the SDK's `Client` and `StreamableHTTPClientTransport` classes to connect to the server:
+   ```typescript
+   import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+   import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+   import { CallToolRequest, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+   
+   // Create a new client
+   const client = new Client({
+     name: "my-mcp-client",
+     version: "1.0.0",
+   });
+   
+   // Create the transport with the server URL
+   const transport = new StreamableHTTPClientTransport(
+     new URL("http://localhost:3001/mcp")
+   );
+   
+   // Connect the client
+   await client.connect(transport);
+   
+   // The session ID is automatically managed by the transport
+   console.log("Connected with session ID:", transport.sessionId);
+   
+   // Call a tool
+   const result = await client.request({
+     method: "tools/call",
+     params: {
+       name: "list-tasks",
+       arguments: { status: "all" },
+     },
+   }, CallToolResultSchema, {});
    ```
 
-2. Start the MCP server with HTTP transport:
+### Using with a Custom Client
+
+1. Start the MCP server with HTTP transport:
    ```bash
    npm run start:http
    ```
 
-3. Start the agent-server-example:
-   ```bash
-   cd ../agent-server-example
-   npm start
+2. Configure your MCP client to connect to the server at:
+   ```
+   http://localhost:3001/mcp
    ```
 
-### Agent Client Example
+3. Make sure to extract and reuse the session ID from the server's responses for subsequent requests.
 
-The `agent-client-example` project provides a web interface for interacting with AI assistants and MCP tools. It connects to the agent-server-example, which in turn connects to this MCP server.
+4. The client can now use the available MCP tools defined in this server.
 
 ## 📋 Future Enhancements
 
@@ -225,8 +204,9 @@ The `agent-client-example` project provides a web interface for interacting with
 - Additional tool categories (file management, web search, etc.)
 - WebSocket support for real-time updates
 - Tool execution metrics and logging
-- Session management for stateful MCP interactions
+- Enhanced error handling and recovery mechanisms
 - Streaming responses for large data transfers
+- Improved client-side SDK examples and documentation
 
 ## 📄 License
 

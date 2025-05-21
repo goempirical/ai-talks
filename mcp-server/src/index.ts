@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
+import { randomUUID } from "node:crypto";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 
 import { z } from "zod";
 
@@ -48,6 +50,8 @@ const server = new McpServer({
     tools: {},
   },
 });
+
+// We'll check for tool existence in the request handler
 
 // Register tool: create-task
 server.tool(
@@ -223,24 +227,59 @@ async function main() {
     // Create Express app for HTTP transport
     const app = express();
     app.use(express.json());
-
+    
+    // Map to store transports by session ID
+    const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+    
     // Handle MCP requests via native MCP endpoint
     app.post("/mcp", async (req, res) => {
+      console.log('Received MCP request:', req.body);
       try {
-        // Create a new transport for each request (stateless mode)
-        const transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: undefined, // Stateless mode
-        });
+        // Check for existing session ID
+        const sessionId = req.headers['mcp-session-id'] as string | undefined;
+        let transport: StreamableHTTPServerTransport;
 
-        // Clean up when the request is done
-        res.on("close", () => {
-          transport.close();
-        });
+        if (sessionId && transports[sessionId]) {
+          // Reuse existing transport
+          transport = transports[sessionId];
+        } else if (!sessionId && isInitializeRequest(req.body)) {
+          // New initialization request
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (sessionId) => {
+              // Store the transport by session ID when session is initialized
+              console.log(`Session initialized with ID: ${sessionId}`);
+              transports[sessionId] = transport;
+            }
+          });
 
-        // Connect to the MCP server
-        await server.connect(transport);
+          // Set up onclose handler to clean up transport when closed
+          transport.onclose = () => {
+            const sid = transport.sessionId;
+            if (sid && transports[sid]) {
+              console.log(`Transport closed for session ${sid}, removing from transports map`);
+              delete transports[sid];
+            }
+          };
 
-        // Handle the request
+          // Connect the transport to the MCP server BEFORE handling the request
+          await server.connect(transport);
+          await transport.handleRequest(req, res, req.body);
+          return; // Already handled
+        } else {
+          // Invalid request - no session ID or not initialization request
+          res.status(400).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32000,
+              message: 'Bad Request: No valid session ID provided',
+            },
+            id: null,
+          });
+          return;
+        }
+
+        // Handle the request with existing transport - no need to reconnect
         await transport.handleRequest(req, res, req.body);
       } catch (error) {
         console.error("Error handling MCP request:", error);
@@ -256,277 +295,44 @@ async function main() {
         }
       }
     });
-
-    // Add compatibility endpoint for agent-server-example
-    app.post("/api/mcp/execute", async (req, res) => {
-      try {
-        const { tool, params } = req.body;
-
-        if (!tool) {
-          return res.status(400).json({ error: "Tool name is required" });
-        }
-
-        let result;
-
-        switch (tool) {
-          case "create-task":
-            if (!params.title) {
-              return res
-                .status(400)
-                .json({ error: "Title is required for create-task" });
-            }
-            const id = generateId();
-            const newTask: Task = {
-              id,
-              title: params.title,
-              description: params.description || "",
-              completed: false,
-              createdAt: new Date(),
-            };
-
-            tasks.set(id, newTask);
-
-            result = {
-              content: [
-                {
-                  type: "text",
-                  text: `Task created successfully!\n${formatTask(newTask)}`,
-                },
-              ],
-            };
-            break;
-
-          case "list-tasks":
-            const status = params.status || "all";
-            let filteredTasks = Array.from(tasks.values());
-
-            if (status === "pending") {
-              filteredTasks = filteredTasks.filter((task) => !task.completed);
-            } else if (status === "completed") {
-              filteredTasks = filteredTasks.filter((task) => task.completed);
-            }
-
-            if (filteredTasks.length === 0) {
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: "No tasks found.",
-                  },
-                ],
-              };
-            } else {
-              const taskList = filteredTasks.map(formatTask).join("\n---\n");
-
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: `Tasks:\n${taskList}`,
-                  },
-                ],
-              };
-            }
-            break;
-
-          case "pending-tasks":
-            const pendingTasks = Array.from(tasks.values()).filter(
-              (task) => !task.completed
-            );
-
-            if (pendingTasks.length === 0) {
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: "No pending tasks found.",
-                  },
-                ],
-              };
-            } else {
-              const pendingTaskList = pendingTasks
-                .map(formatTask)
-                .join("\n---\n");
-
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: `Pending Tasks:\n${pendingTaskList}`,
-                  },
-                ],
-              };
-            }
-            break;
-
-          case "complete-task":
-            if (!params.id) {
-              return res
-                .status(400)
-                .json({ error: "Task ID is required for complete-task" });
-            }
-
-            const task = tasks.get(params.id);
-
-            if (!task) {
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: `Task with ID ${params.id} not found.`,
-                  },
-                ],
-              };
-              break;
-            }
-
-            if (task.completed) {
-              result = {
-                content: [
-                  {
-                    type: "text",
-                    text: `Task with ID ${params.id} is already marked as completed.`,
-                  },
-                ],
-              };
-              break;
-            }
-
-            task.completed = true;
-            tasks.set(params.id, task);
-
-            result = {
-              content: [
-                {
-                  type: "text",
-                  text: `Task with ID ${
-                    params.id
-                  } marked as completed!\n${formatTask(task)}`,
-                },
-              ],
-            };
-            break;
-
-          default:
-            return res.status(400).json({ error: `Unknown tool: ${tool}` });
-        }
-
-        res.json(result);
-      } catch (error) {
-        console.error("Error executing MCP tool:", error);
-        res.status(500).json({ error: "Failed to execute MCP tool" });
+    
+    // Handle GET requests for SSE streams
+    app.get('/mcp', async (req, res) => {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+      if (!sessionId || !transports[sessionId]) {
+        res.status(400).send('Invalid or missing session ID');
+        return;
       }
+      
+      // Check for Last-Event-ID header for resumability
+      const lastEventId = req.headers['last-event-id'] as string | undefined;
+      if (lastEventId) {
+        console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
+      } else {
+        console.log(`Establishing new SSE stream for session ${sessionId}`);
+      }
+      
+      const transport = transports[sessionId];
+      await transport.handleRequest(req, res);
     });
-
-    // Add API endpoints for tasks
-    app.post("/api/tasks", (req, res) => {
-      try {
-        const { title, description } = req.body;
-
-        if (!title) {
-          return res.status(400).json({ error: "Title is required" });
-        }
-
-        const id = generateId();
-        const newTask: Task = {
-          id,
-          title,
-          description: description ?? "",
-          completed: false,
-          createdAt: new Date(),
-        };
-
-        tasks.set(id, newTask);
-
-        res.status(201).json({
-          message: "Task created successfully",
-          task: {
-            id: newTask.id,
-            title: newTask.title,
-            description: newTask.description,
-            completed: newTask.completed,
-            createdAt: newTask.createdAt,
-          },
-        });
-      } catch (error) {
-        console.error("Error creating task:", error);
-        res.status(500).json({ error: "Failed to create task" });
+    
+    // Handle DELETE requests for session termination
+    app.delete('/mcp', async (req, res) => {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+      if (!sessionId || !transports[sessionId]) {
+        res.status(400).send('Invalid or missing session ID');
+        return;
       }
-    });
-
-    app.get("/api/tasks", (req, res) => {
-      try {
-        const status = (req.query.status as string) ?? "all";
-
-        let filteredTasks = Array.from(tasks.values());
-
-        if (status === "pending") {
-          filteredTasks = filteredTasks.filter((task) => !task.completed);
-        } else if (status === "completed") {
-          filteredTasks = filteredTasks.filter((task) => task.completed);
-        }
-
-        res.json({
-          tasks: filteredTasks.map((task) => ({
-            id: task.id,
-            title: task.title,
-            description: task.description,
-            completed: task.completed,
-            createdAt: task.createdAt,
-          })),
-        });
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-        res.status(500).json({ error: "Failed to fetch tasks" });
-      }
-    });
-
-    app.patch("/api/tasks/:id/complete", (req, res) => {
-      try {
-        const { id } = req.params;
-        const task = tasks.get(id);
-
-        if (!task) {
-          return res
-            .status(404)
-            .json({ error: `Task with ID ${id} not found` });
-        }
-
-        if (task.completed) {
-          return res
-            .status(400)
-            .json({ error: `Task with ID ${id} is already completed` });
-        }
-
-        task.completed = true;
-        tasks.set(id, task);
-
-        res.json({
-          message: "Task marked as completed",
-          task: {
-            id: task.id,
-            title: task.title,
-            description: task.description,
-            completed: task.completed,
-            createdAt: task.createdAt,
-          },
-        });
-      } catch (error) {
-        console.error("Error completing task:", error);
-        res.status(500).json({ error: "Failed to complete task" });
-      }
+      
+      console.log(`Terminating session ${sessionId}`);
+      const transport = transports[sessionId];
+      await transport.handleRequest(req, res);
     });
 
     // Start the HTTP server
     app.listen(port, () => {
       console.log(`MCP server running with HTTP transport on port ${port}`);
       console.log(`Access the server at http://localhost:${port}/mcp`);
-      console.log(
-        `API endpoints available at http://localhost:${port}/api/tasks`
-      );
-      console.log(
-        `MCP tool execution endpoint at http://localhost:${port}/api/mcp/execute`
-      );
     });
   } else {
     // Use stdio transport (default)
