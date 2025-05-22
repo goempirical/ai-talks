@@ -3,6 +3,7 @@
 ![OpenAI API](https://img.shields.io/badge/OpenAI%20API-Ready-brightgreen)
 ![NestJS](https://img.shields.io/badge/NestJS-10.0%2B-red)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
+![MCP SDK](https://img.shields.io/badge/MCP%20SDK-Integrated-orange)
 
 A powerful NestJS backend that bridges OpenAI's Agent framework with MCP (Model Context Protocol) servers, enabling AI assistants to execute real-world actions through natural language requests.
 
@@ -10,7 +11,8 @@ A powerful NestJS backend that bridges OpenAI's Agent framework with MCP (Model 
 
 - **AI-Powered Chat Interface**: Seamless integration with OpenAI's latest models
 - **Function Calling**: Intelligent mapping of natural language to executable functions
-- **MCP Tool Execution**: Bridge between AI models and MCP-compatible tools
+- **MCP SDK Integration**: Direct integration with the official MCP SDK for reliable tool execution
+- **Robust Session Management**: Maintains valid session IDs for consistent MCP server connections
 - **Task Management API**: Complete CRUD operations for task management
 - **Stateless Architecture**: Designed for scalability and reliability
 - **Developer-Friendly**: Comprehensive documentation and type safety
@@ -20,6 +22,7 @@ A powerful NestJS backend that bridges OpenAI's Agent framework with MCP (Model 
 - **NestJS** framework for robust backend architecture
 - **TypeScript** for type-safe development
 - **OpenAI API** with advanced function calling capabilities
+- **MCP SDK** (@modelcontextprotocol/sdk) for standardized MCP client communication
 - **Vercel AI SDK** for streamlined AI integration
 - **Axios** for efficient HTTP requests
 - **MCP Protocol** compatibility for tool execution
@@ -31,8 +34,9 @@ This server acts as an intelligent bridge between your frontend application and 
 1. **User Request**: The frontend sends a natural language request
 2. **AI Processing**: OpenAI models interpret the request and identify required actions
 3. **Function Mapping**: The server maps AI intentions to appropriate MCP tools
-4. **Tool Execution**: MCP tools are executed with the necessary parameters
-5. **Response Generation**: Results are processed and returned to the user
+4. **MCP SDK Connection**: The server connects to the MCP server using the official SDK with proper session management
+5. **Tool Execution**: MCP tools are executed with the necessary parameters through the SDK client
+6. **Response Generation**: Results are processed and returned to the user
 
 ## 🚀 Getting Started
 
@@ -109,6 +113,8 @@ PATCH /tasks/:id/complete                 # Mark a task as completed
 
 - `src/controllers/` - API endpoints and request handling
 - `src/services/` - Business logic and integration with OpenAI and MCP
+  - `ai.service.ts` - Handles AI interactions and MCP tool execution
+  - `mcp.service.ts` - Manages MCP server connections using the SDK
 - `src/interfaces/` - TypeScript type definitions
 - `src/config/` - Application configuration
 
@@ -133,6 +139,9 @@ This server pairs perfectly with the `agent-client-example` project, which provi
 - Streaming responses for real-time interactions
 - Advanced context management for improved AI understanding
 - Performance metrics and monitoring
+- Enhanced error handling and recovery mechanisms
+- Support for more complex MCP tool interactions
+- Expanded test coverage for SDK integration
 
 ## 📄 License
 

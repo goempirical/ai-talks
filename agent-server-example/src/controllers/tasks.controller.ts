@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
-import { McpService } from '../services/mcp.service';
 import { CreateTaskDto } from '../interfaces/task.interface';
+import { McpService } from 'src/services/mcp.service';
 
 @Controller('tasks')
 export class TasksController {
