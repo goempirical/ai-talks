@@ -10,6 +10,7 @@ import { useChat } from '../contexts/ChatContext';
 const ChatPage = () => {
   const { messages, addMessage } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const sendMessageMutation = useMutation({
     mutationFn: (content: string) => {
@@ -44,9 +45,10 @@ const ChatPage = () => {
     sendMessageMutation.mutate(content);
   };
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom and focus input when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    inputRef.current?.focus();
   }, [messages]);
 
   return (
@@ -70,6 +72,7 @@ const ChatPage = () => {
         <ChatInput 
           onSendMessage={handleSendMessage} 
           isLoading={sendMessageMutation.isPending} 
+          ref={inputRef}
         />
         
         {sendMessageMutation.isError && (
