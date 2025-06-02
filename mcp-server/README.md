@@ -1,11 +1,11 @@
-# 🔌 MCP Tool Server - AI Agent Toolkit
+# 🔌 Enhanced MCP Server - AI Agent Toolkit
 
 ![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-18.0%2B-green)
 ![MCP SDK](https://img.shields.io/badge/MCP%20SDK-Compatible-orange)
 
-A powerful and extensible Model Context Protocol (MCP) server that enables AI agents to interact with external tools and services. This implementation provides a task management system that demonstrates how to build and deploy MCP-compatible tools for AI assistants. The server supports both stdio transport for direct MCP communication and HTTP transport for web-based integrations, with robust session management for reliable client connections.
+A comprehensive and extensible Model Context Protocol (MCP) server with modular architecture supporting task management, email functionality, environment variables, and utility tools. This enhanced implementation provides 23 production-ready tools that enable AI agents to interact with external services while maintaining clean, maintainable, and human-readable code.
 
 ## 🌟 What is MCP?
 
@@ -13,101 +13,226 @@ The Model Context Protocol (MCP) is a standard that allows AI models to interact
 
 ## ✨ Features
 
-- **MCP-Compatible Tools**: Ready-to-use tools for AI assistants
-- **Task Management System**: Create, list, and complete tasks
-- **Multiple Transport Options**: Works with both stdio and HTTP transport
-- **Native MCP Protocol Support**: Implements the official MCP specification
-- **Robust Session Management**: Maintains valid session IDs for reliable tool execution
-- **MCP SDK Integration**: Compatible with the official MCP SDK client
-- **RESTful API**: HTTP endpoints for traditional web applications
-- **Extensible Architecture**: Easily add new tools and capabilities
-- **Developer-Friendly**: Clear documentation and examples
-- **Lightweight**: In-memory storage for quick setup and testing
+### 🎯 Task Management (7 tools)
+- **create-task**: Create new tasks with title, description, priority, and tags
+- **list-tasks**: List all tasks with filtering by status, priority, or tags
+- **pending-tasks**: Get all pending tasks (legacy compatibility)
+- **complete-task**: Mark tasks as completed
+- **update-task**: Update existing task properties
+- **delete-task**: Delete tasks permanently
+- **task-stats**: Get comprehensive task statistics
 
-## 🛠️ Available Tools
+### 📧 Email Functionality (4 tools)
+- **send-email**: Send simple text emails with CC/BCC support
+- **send-html-email**: Send HTML emails with text fallback
+- **test-email**: Test email configuration and SMTP connection
+- **send-task-notification**: Send email notifications about task updates
 
-### 1. create-task
+### 🔧 Environment Variables (5 tools)
+- **set-env-var**: Set/update environment variables with descriptions
+- **get-env-var**: Retrieve environment variable values
+- **list-env-vars**: List all managed environment variables
+- **delete-env-var**: Remove environment variables
+- **export-env-vars**: Export variables in .env format
 
-Creates a new task with a title and description.
+### 🛠️ Utility Tools (7 tools)
+- **get-datetime**: Get current date/time in various formats
+- **generate-uuid**: Generate UUIDs in different formats
+- **generate-random**: Generate random data (numbers, strings, passwords, hex, base64)
+- **calculate-hash**: Calculate hashes using MD5, SHA1, SHA256, SHA512
+- **sleep**: Sleep/delay for specified duration
+- **get-server-status**: Get server status and resource usage
+- **get-server-config**: Get detailed server configuration
 
-**Parameters:**
-- `title`: String (required) - The title of the task
-- `description`: String (required) - The description of the task
+### 🏗️ Architecture Features
+- **Modular Design**: Each tool category in separate files for maintainability
+- **Feature Flags**: Enable/disable functionality via environment variables
+- **Type Safety**: Full TypeScript support with comprehensive interfaces
+- **Configuration Management**: Centralized config with validation
+- **Error Handling**: Robust error handling with user-friendly messages
+- **Backward Compatibility**: Maintains compatibility with existing implementations
 
-### 2. list-tasks
+## 🏗️ Architecture
 
-Lists all tasks currently stored in memory.
+The server uses a modular architecture for maintainability and extensibility:
 
-**Parameters:**
-- `status`: String (optional) - Filter by status: "all", "pending", or "completed"
+```
+src/
+├── config/          # Configuration management
+├── services/        # Business logic services
+├── tools/           # Tool implementations by category
+├── types/           # TypeScript interfaces
+├── utils/           # Utility functions
+└── index.ts         # Main server entry point
+```
 
-### 3. pending-tasks
+### Key Design Principles
 
-Lists all pending tasks.
+- **Modular**: Each tool category is in its own file
+- **Configurable**: Features can be enabled/disabled via environment variables
+- **Type-safe**: Full TypeScript support with comprehensive interfaces
+- **Maintainable**: Clear separation of concerns and consistent patterns
+- **Extensible**: Easy to add new tools and categories
 
-**Parameters:** None
+## ⚙️ Configuration
 
-### 4. complete-task
+### Environment Variables
 
-Marks a specific task as completed.
+Copy `.env.example` to `.env` and configure:
 
-**Parameters:**
-- `id`: String (required) - The ID of the task to mark as completed
+```bash
+# Server Configuration
+MCP_SERVER_NAME=enhanced-mcp-server
+MCP_SERVER_VERSION=2.0.0
+PORT=3001
 
-## 🚀 Getting Started
+# Feature Flags
+FEATURE_TASK_MANAGEMENT_ENABLED=true
+FEATURE_EMAIL_ENABLED=true
+FEATURE_ENV_VARS_ENABLED=true
+
+# Email Configuration (required if email enabled)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=your-email@gmail.com
+```
+
+### Email Setup
+
+For Gmail:
+1. Enable 2-factor authentication
+2. Generate an app password: Google Account → Security → App passwords
+3. Use the app password as `SMTP_PASS`
+
+## 🚀 Installation & Usage
 
 ### Prerequisites
-
-- Node.js (v18 or later)
+- Node.js 18+
 - npm or yarn
 
-### Installation
-
-1. Clone the repository:
-
+### Setup
 ```bash
-git clone https://github.com/yourusername/mcp-server.git
-cd mcp-server
-```
-
-2. Install dependencies:
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. Build the TypeScript code:
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your settings
 
-```bash
+# Build the project
 npm run build
-```
 
-## 🏃‍♂️ Running the Server
-
-### Stdio Transport (for AI Assistants)
-
-```bash
+# Start the server
 npm start
+
+# Or start with HTTP transport
+npm start -- --http
 ```
 
-This runs the server in stdio mode, making it compatible with MCP clients like Claude for Desktop.
-
-### HTTP Transport (Native MCP Protocol)
-
+### Development
 ```bash
-npm run start:http
+# Watch mode for development
+npm run dev
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
 ```
 
-This runs the server with HTTP transport using the native MCP protocol. The server listens on port 3001 by default and exposes the MCP endpoint at `/mcp`.
+## 🛠️ Tool Examples
 
+### Task Management
+Enhanced task management with priority levels, tags, and comprehensive filtering:
 
-Customize the port using the `PORT` environment variable for any mode:
+```typescript
+// Create a task with priority and tags
+{
+  "title": "Review pull request",
+  "description": "Review the new authentication feature",
+  "priority": "high",
+  "tags": "code-review,security,urgent"
+}
 
-```bash
-PORT=8080 npm run start:http
+// List tasks with filtering
+{
+  "status": "pending",
+  "priority": "high",
+  "tag": "urgent"
+}
 ```
 
-## 🌐 Available Endpoints
+### Email Integration
+Full-featured email capabilities with SMTP support:
+
+```typescript
+// Send HTML email with attachments
+{
+  "to": "user@example.com",
+  "subject": "Project Update",
+  "html": "<h1>Status Report</h1><p>All tasks completed!</p>",
+  "cc": "manager@example.com"
+}
+
+// Send task notification
+{
+  "to": "team@example.com",
+  "taskId": "task-123",
+  "action": "completed",
+  "message": "Great work team!"
+}
+```
+
+### Environment Variables
+Secure environment variable management with secret masking:
+
+```typescript
+// Set a secret variable
+{
+  "key": "API_SECRET",
+  "value": "super-secret-key",
+  "description": "Third-party API secret key",
+  "isSecret": true
+}
+
+// Export all non-secret variables
+{
+  "includeSecrets": false,
+  "includeComments": true
+}
+```
+
+### Utility Functions
+Comprehensive utility tools for common tasks:
+
+```typescript
+// Generate secure password
+{
+  "type": "password",
+  "length": 16,
+  "includeSymbols": true
+}
+
+// Calculate file hash
+{
+  "text": "Hello, World!",
+  "algorithm": "sha256",
+  "encoding": "hex"
+}
+```
+
+## 🌐 API Endpoints (HTTP Mode)
+
+When running with `--http` flag:
+
+- **Server**: `http://localhost:3001/mcp`
+- **Health**: `http://localhost:3001/health`
+- **Tasks**: `http://localhost:3001/tasks` (GET/POST)
+- **Task by ID**: `http://localhost:3001/tasks/:id` (GET/PUT/DELETE)
 
 ### Native MCP Protocol Endpoint
 
@@ -197,16 +322,47 @@ This server implements the Model Context Protocol specification and can be used 
 
 4. The client can now use the available MCP tools defined in this server.
 
-## 📋 Future Enhancements
+## 🔒 Security Considerations
 
-- Persistent storage options (MongoDB, PostgreSQL)
-- Authentication and authorization
-- Additional tool categories (file management, web search, etc.)
-- WebSocket support for real-time updates
-- Tool execution metrics and logging
-- Enhanced error handling and recovery mechanisms
-- Streaming responses for large data transfers
-- Improved client-side SDK examples and documentation
+- Environment variables marked as secrets are masked in output
+- Email credentials should use app-specific passwords
+- SMTP connections use TLS when available
+- Input validation on all tool parameters
+- No sensitive data logged to console
+
+## 🤝 Contributing
+
+1. Follow the modular architecture patterns
+2. Add comprehensive TypeScript types
+3. Include proper error handling
+4. Update documentation for new tools
+5. Maintain backward compatibility
+
+## 📋 Backward Compatibility
+
+The server maintains full backward compatibility with the original task management functionality while adding new features. All existing tools work exactly as before.
+
+## 📄 Changelog
+
+### v2.0.0
+- ✨ Added modular architecture
+- ✨ Added email functionality (4 tools)
+- ✨ Added environment variable management (5 tools)
+- ✨ Added utility tools (7 tools)
+- ✨ Added comprehensive configuration system
+- ✨ Added feature flags for enabling/disabling functionality
+- ✨ Enhanced task management with priorities and tags
+- ✨ Added TypeScript interfaces for all components
+- 🔧 Improved error handling and validation
+- 📚 Added comprehensive documentation
+- 🔒 Added security features for sensitive data
+- ⚡ Maintained full backward compatibility
+
+### v1.0.0
+- 🎯 Basic task management functionality
+- 📝 Create, list, and complete tasks
+- 🚀 MCP protocol support
+- 🌐 HTTP and stdio transport options
 
 ## 📄 License
 

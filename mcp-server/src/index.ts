@@ -1,3 +1,8 @@
+/**
+ * Enhanced MCP Server with modular architecture
+ * Supports task management, email functionality, environment variables, and utility tools
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -5,223 +10,79 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 
-import { z } from "zod";
-
-// Define Task interface
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  createdAt: Date;
-}
-
-// In-memory task storage - exported to be shared with HTTP server
-export const tasks: Map<string, Task> = new Map();
+// Import our modular components
+import { serverConfig, validateConfig, getConfigSummary } from './config/index.js';
+import { getAllTools, validateToolRegistry, getToolStats } from './tools/index.js';
 
 // Check if this module is being imported or run directly
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
-// Helper function to generate a unique ID
-function generateId(): string {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
-}
+// Validate configuration on startup
+validateConfig();
 
-// Helper function to format a task for display
-function formatTask(task: Task): string {
-  return `
-      ID: ${task.id}
-      Title: ${task.title}
-      Description: ${task.description}
-      Status: ${task.completed ? "Completed" : "Pending"}
-      Created: ${task.createdAt.toISOString()}
-`;
-}
-
-// Create server instance
+// Create server instance with dynamic configuration
 const server = new McpServer({
-  name: "task-manager",
-  version: "1.0.0",
+  name: serverConfig.name,
+  version: serverConfig.version,
   capabilities: {
     resources: {},
     tools: {},
   },
 });
 
-// We'll check for tool existence in the request handler
-
-// Register tool: create-task
-server.tool(
-  "create-task",
-  "Create a new task with title and description",
-  {
-    title: z.string().min(1).describe("Title of the task"),
-    description: z.string().describe("Description of the task"),
-  },
-  async ({ title, description }: { title: string; description: string }) => {
-    const id = generateId();
-    const newTask: Task = {
-      id,
-      title,
-      description,
-      completed: false,
-      createdAt: new Date(),
-    };
-
-    tasks.set(id, newTask);
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Task created successfully!\n${formatTask(newTask)}`,
-        },
-      ],
-    };
+// Register all tools dynamically
+function registerTools() {
+  const tools = getAllTools();
+  const validation = validateToolRegistry();
+  
+  if (!validation.valid) {
+    console.error('Tool registry validation failed:');
+    validation.errors.forEach(error => console.error(`  - ${error}`));
+    process.exit(1);
   }
-);
 
-// Register tool: list-tasks
-server.tool(
-  "list-tasks",
-  "Get a list of all tasks",
-  // Add a status filter parameter
-  {
-    status: z
-      .enum(["all", "pending", "completed"])
-      .optional()
-      .describe("Filter tasks by status: all, pending, or completed"),
-  },
-  async (params: { status?: "all" | "pending" | "completed" }) => {
-    // Default to 'all' if status is null or undefined
-    const status = params.status ?? "all";
-
-    // Filter tasks based on status parameter
-    let filteredTasks = Array.from(tasks.values());
-    if (status === "pending") {
-      filteredTasks = filteredTasks.filter((task) => !task.completed);
-    } else if (status === "completed") {
-      filteredTasks = filteredTasks.filter((task) => task.completed);
+  console.log(`Registering ${tools.length} tools...`);
+  
+  tools.forEach(tool => {
+    try {
+      server.tool(
+        tool.name,
+        tool.description,
+        tool.inputSchema,
+        tool.handler
+      );
+      console.log(`  ✅ Registered tool: ${tool.name}`);
+    } catch (error) {
+      console.error(`  ❌ Failed to register tool ${tool.name}:`, error);
     }
-    if (filteredTasks.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: "No tasks found.",
-          },
-        ],
-      };
-    }
+  });
 
-    const taskList = filteredTasks.map(formatTask).join("\n---\n");
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Tasks:\n${taskList}`,
-        },
-      ],
-    };
+  // Log tool statistics
+  const stats = getToolStats();
+  console.log(`\n📊 Tool Registration Summary:`);
+  console.log(`  Total tools: ${stats.total}`);
+  console.log(`  Enabled categories: ${stats.enabled.join(', ')}`);
+  if (stats.disabled.length > 0) {
+    console.log(`  Disabled categories: ${stats.disabled.join(', ')}`);
   }
-);
-
-// Register tool: pending-tasks
-server.tool(
-  "pending-tasks",
-  "Get a list of all pending tasks",
-  // Define an empty object schema with a property to satisfy the MCP protocol
-  {
-    status: z
-      .string()
-      .optional()
-      .describe("Not used but required for MCP protocol"),
-  },
-  async (_params: { status?: string }) => {
-    // Filter for only pending tasks
-    const pendingTasks = Array.from(tasks.values()).filter(
-      (task) => !task.completed
-    );
-
-    if (pendingTasks.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: "No pending tasks found.",
-          },
-        ],
-      };
+  Object.entries(stats.byCategory).forEach(([category, count]) => {
+    if (count > 0) {
+      console.log(`  ${category}: ${count} tools`);
     }
+  });
+}
 
-    const taskList = pendingTasks.map(formatTask).join("\n---\n");
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Pending Tasks:\n${taskList}`,
-        },
-      ],
-    };
-  }
-);
-
-// Register tool: complete-task
-server.tool(
-  "complete-task",
-  "Mark a task as completed",
-  {
-    id: z.string().describe("ID of the task to mark as completed"),
-  },
-  async ({ id }: { id: string }) => {
-    const task = tasks.get(id);
-
-    if (!task) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Task with ID ${id} not found.`,
-          },
-        ],
-      };
-    }
-
-    if (task.completed) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Task with ID ${id} is already marked as completed.`,
-          },
-        ],
-      };
-    }
-
-    task.completed = true;
-    tasks.set(id, task);
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Task marked as completed:\n${formatTask(task)}`,
-        },
-      ],
-    };
-  }
-);
+// Register all tools
+registerTools();
 
 // Main function to run the server
 async function main() {
+  // Log configuration summary
+  console.log(getConfigSummary());
+  
   // Check if we should use HTTP transport
   const useHttp = process.argv.includes("--http");
-  const port = parseInt(process.env.PORT || "3001");
+  const port = serverConfig.port;
 
   if (useHttp) {
     // Create Express app for HTTP transport
@@ -351,5 +212,8 @@ if (isMainModule) {
   });
 }
 
-// Export the server for potential use in other modules
+// Export the server and tasks for potential use in other modules (backward compatibility)
 export { server };
+
+// Re-export tasks for backward compatibility
+export { tasks } from './tools/taskTools.js';
